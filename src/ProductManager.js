@@ -1,6 +1,6 @@
-const fs = require("fs");
+import fs from "fs";
 
-class ProductManager {
+export default class ProductManager {
   constructor(path) {
     this.path = path;
     this.products = [];
@@ -89,10 +89,9 @@ class ProductManager {
     const productsString = JSON.stringify(this.products);
     fs.writeFileSync(this.path, productsString);
   }
-
 }
 
-//TESTING
+/*//TESTING
 // Create Instance
 const newProduct = new ProductManager("products.json");
 // Show Products
@@ -141,4 +140,4 @@ newProduct.addProduct(
 newProduct.getProductById(1);
 newProduct.getProductById(2);
 newProduct.deleteProduct(2);
-newProduct.updateProduct(3, "", "PRODUCTO ACTUALIZADO", "", "", "", "");
+newProduct.updateProduct(3, "", "PRODUCTO ACTUALIZADO", "", "", "", "");*/
