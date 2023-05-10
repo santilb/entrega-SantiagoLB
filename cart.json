@@ -1,0 +1,32 @@
+[
+    {
+      "idCart": "2caa37e9-9362-4c2b-ac61-eda73734a318",
+      "products": []
+    },
+    {
+      "idCart": "7f1ab812-10cf-4d43-ac12-071989ce2b35",
+      "products": [
+        {
+          "idProd": "1",
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "idCart": "58d76760-383c-410b-af1b-d2d1b01637f6",
+      "products": [
+        {
+          "idProd": "1",
+          "quantity": 1
+        },
+        {
+          "idProd": "2",
+          "quantity": 9
+        },
+        {
+          "idProd": "3",
+          "quantity": 3
+        }
+      ]
+    }
+  ]
