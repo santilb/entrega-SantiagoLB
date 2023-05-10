@@ -1,79 +1,77 @@
 import fs from "fs";
-import productManager from "./app.js";
+import { uuid } from "uuidv4";
 
 export default class CartManager {
-    constructor(path) {
-        this.path = path;
-        this.carts = [];
-        this.currentId = 0;
-    }
+  constructor(path) {
+    this.path = path;
+    this.carts = [];
 
-    async loadData() {
-        try {
-            const data = await fs.promises.readFile(this.path, "utf-8");
-            const parsedData = JSON.parse(data);
-            this.carts = parsedData.carts;
-            this.currentId = parsedData.lastId;
-        }
-        catch (error) {
-            console.log("JSON NOT FOUND");
-            try {
-                await fs.promises.writeFile(this.path, JSON.stringify({ lastId: 0, carts: [] }, null, 2), "utf-8");
-                await this.loadData();
-                console.log("JSON CREATED");
-            }
-            catch (error) {
-                console.log("ERROR CREATING FILE");
-            }
-        }
+    if (fs.existsSync(this.path)) {
+      const cartsString = fs.readFileSync(this.path, "utf-8");
+      const carts = JSON.parse(cartsString);
+      this.carts = carts;
     }
-    async saveData() {
-        try {
-            await fs.promises.writeFile(this.path, JSON.stringify({ lastId: this.currentId, carts: this.carts }, null, 2), "utf-8");
-        }
-        catch (error) {
-            console.log("ERROR WRITING FILE");
-        }
-    }
-    async addCart(res) {
-        this.carts.push({ idCarrito: ++this.currentId, productos: [] });
-        await this.saveData();
-        return res.status(201).json({ status: "success", message: "Cart Created", payload: this.carts[this.carts.length - 1] });
-    }
-    getCartProducts(res, id) {
-        if (isNaN(id)) {
-            return res.status(400).json({ status: "ERROR", message: "ID ERROR" });
-        }
-        if (id == 0) {
-            return res.status(400).json({ status: "ERROR", message: "INCORRECT ID VALUE" });
-        }
-        const cart = this.carts.find((item) => item.idCarrito === id);
-        if (cart) {
-            return res.json({ status: "SUCCESS", payload: cart.productos });
-        }
-        else {
-            return res.status(404).json({ status: "ERROR", message: "NOT FOUND" });
-        }
-    }
+  }
 
-    async addProductToCart(res, cartID, productID) {
-        if (!productManager.productExists(productID)) {
-            return res.status(404).json({ status: "ERROR", message: "PRODUCT NOT FOUND" });
-        }
-        const cartIndex = this.carts.findIndex((cart) => cart.idCarrito === cartID);
-        if (cartIndex === -1) {
-            return res.status(404).json({ status: "ERROR", message: "CART NOT FOUND" });
-        }
+  addCart() {
+    const newCart = {
+      idCart: uuid(),
+      products: [],
+    };
+    this.carts.push(newCart);
+    fs.writeFileSync(this.path, JSON.stringify(this.carts));
+    return newCart.idCart;
+  }
 
-        const productIndex = this.carts[cartIndex].productos.findIndex((product) => product.idProduct === productID);
-        if (productIndex !== -1) {
-            this.carts[cartIndex].productos[productIndex].quantity++;
-            await this.saveData();
-            return res.json({ status: "SUCCESS", message: "PRODUCT UPDATED", payload: this.carts[cartIndex] });
-        }
+  getCarts = () => {
+    return this.carts;
+  };
+
+  getCartById = (id) => {
+    const searchCart = this.carts.find((cart) => cart.idCart === id);
+    if (searchCart) {
+      return searchCart;
+    } else {
+      return `Cart ID Not Found`;
+    }
+  };
+
+  addProductToCart(cid, pid) {
+    try {
+      const data = this.carts;
+      const cart = this.carts.find((cart) => cart.idCart == cid);
+      if (cart) {
+        const product = cart.products.find((product) => product.idProd == pid);
         
-        this.carts[cartIndex].productos.push({ idProduct: productID, quantity: 1 });
-        await this.saveData();
-        return res.json({ status: "SUCCESS", message: "PRODUCT ADDED", payload: this.carts[cartIndex] });
+        if (product) {
+          product.quantity = parseInt(product.quantity + 1);
+          const index = cart.products.indexOf(product);
+          cart.products.splice(index, 1, product);
+          const indexCart = data.indexOf(cart);
+          data.splice(indexCart, 1, cart);
+          const productsString = JSON.stringify(data);
+          fs.writeFileSync(this.path, productsString);
+          return product;
+
+        } else {
+          cart.products.push({ idProd: pid, quantity: 1 });
+          const indexCart = data.indexOf(cart);
+          data.splice(indexCart, 1, cart);
+          const productsString = JSON.stringify(data, null, 2);
+          fs.writeFileSync(this.path, productsString);
+        }
+      } else {
+        return "No existe el carrito";
+      }
+    } catch (err) {
+      console.log(err);
     }
+  }
+
+  deleteCart(cid) {
+    const deleteCart = this.carts.filter((num) => num.id != cid);
+    this.carts = deleteCart;
+    const cartsString = JSON.stringify(this.carts);
+    fs.writeFileSync(this.path, cartsString);
+  }
 }

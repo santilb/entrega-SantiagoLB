@@ -11,44 +11,40 @@ export default class ProductManager {
     }
   }
 
-  addProduct = (title, description, price, thumbnail, code, stock) => {
-    let repe = false;
-    let empty = false;
-
-    if (title == '' || description== '' || price == '' ||  thumbnail == '' || code=='' || stock == '') {
-      empty = true ;
-      console.log("FOUND EMPTY VARIABLE")
-    }
-
+  addProduct = (obj) => {
     let id = 0;
     this.products.forEach((prod) => {
       if (prod.id >= id) {
         id = prod.id;
       }
     });
+
     id++;
 
-    this.products.forEach((ele) => {
-      if (ele.code === code) {
-        repe = true;
-        console.log("ERROR. THE CODE CAN NOT BE REPEATED");
+    if (obj) {
+      if (this.products.find((product) => product.code === obj.code)) {
+        return "The product already exists";
       }
-    });
-
-    if (!repe && !empty) {
-      const finalProduct = {
-        id,
-        title,
-        description,
-        price,
-        thumbnail,
-        code,
-        stock,
-      };
-
-      this.products.push(finalProduct);
+      if (
+        !product.title ||
+        !product.description ||
+        !product.price ||
+        !product.code ||
+        !product.category ||
+        !product.stock
+      ) {
+        return "Product has an empty variable";
+      }
+      if (!product.thumbnail) {
+        product.thumbnail = [];
+      }
+      if (!product.status) {
+        product.status = true;
+      }
+      const newProduct = { id: id, ...obj };
+      this.products.push(newProduct);
       const productsString = JSON.stringify(this.products);
-      fs.writeFileSync(this.path, productsString);
+      fs.writeFile(this.path, productsString);
     }
   };
 
@@ -57,30 +53,38 @@ export default class ProductManager {
   };
 
   getProductById = (idSearch) => {
-    this.products.forEach((ele) => {
-      if (ele.id === idSearch) {
-        console.log(ele);
+    const product = this.products.find((p) => p.id === idSearch);
+      if (product) {
+        return product;
       } else {
-        console.log("Not Found");
+        return ("PRODUCT NOT FOUND")
       }
-    });
   };
 
-  updateProduct(id, title, description, price, thumbnail, code, stock) {
-    this.products.forEach((ele) => {
-      if (ele.id === id) {
-        title == '' ? 'empty' : ele.title = title;
-        description == '' ? 'empty' : ele.description = description;
-        price == '' ? 'empty' : ele.price = price;
-        thumbnail == '' ? 'empty' : ele.thumbnail = thumbnail;
-        code == '' ? 'empty' : ele.code = code;
-        stock == '' ? 'empty' : ele.stock = stock;
+  updateProduct(id, product) {
+    if (
+      !product.title ||
+      !product.description ||
+      !product.price ||
+      !product.thumbnail ||
+      !product.code ||
+      !product.stock
+    ) {
+      return "You must to complete all the fields";
+    } else {
+      this.products.forEach((ele) => {
+        if (ele.id === id) {
+          ele.title = product.title;
+          ele.description = product.description;
+          ele.price = product.price;
+          ele.thumbnail = product.thumbnail;
+          ele.code = product.code;
+          ele.stock = product.stock;
 
-        console.log("PRODUCT" + id + " UPDATED");
-        console.log(JSON.stringify(ele))
-      }
-    });
-    fs.writeFileSync(this.path, JSON.stringify(this.products));   
+          fs.writeFileSync(this.path, JSON.stringify(this.products));
+        }
+      });
+    }
   }
 
   deleteProduct(id) {
@@ -90,54 +94,3 @@ export default class ProductManager {
     fs.writeFileSync(this.path, productsString);
   }
 }
-
-/*//TESTING
-// Create Instance
-const newProduct = new ProductManager("products.json");
-// Show Products
-newProduct.getProducts();
-// Add Products
-newProduct.addProduct(
-  "producto prueba",
-  "Este es un producto prueba",
-  250,
-  "Sin Imagen",
-  "abc123",
-  25
-);
-newProduct.addProduct(
-  "producto prueba2",
-  "Este es un producto prueba2",
-  255,
-  "Sin Imagen2",
-  "abc1232",
-  252
-);
-
-newProduct.addProduct(
-  "producto prueba3",
-  "Este es un producto prueba3",
-  253,
-  "Sin Imagen3",
-  "abc12323",
-  253
-);
-
-// Show Products
-newProduct.getProducts();
-
-// Add repeated product
-newProduct.addProduct(
-  "producto prueba",
-  "Este es un producto prueba",
-  250,
-  "Sin Imagen",
-  "abc123",
-  25
-);
-
-// Test method getProductById
-newProduct.getProductById(1);
-newProduct.getProductById(2);
-newProduct.deleteProduct(2);
-newProduct.updateProduct(3, "", "PRODUCTO ACTUALIZADO", "", "", "", "");*/
