@@ -11,7 +11,7 @@ export default class ProductManager {
     }
   }
 
-  addProduct = (obj) => {
+  addProduct = async (obj) => {
     let id = 0;
     this.products.forEach((prod) => {
       if (prod.id >= id) {
@@ -26,12 +26,12 @@ export default class ProductManager {
         return "The product already exists";
       }
       if (
-        !product.title ||
-        !product.description ||
-        !product.price ||
-        !product.code ||
-        !product.category ||
-        !product.stock
+        !obj.title ||
+        !obj.description ||
+        !obj.price ||
+        !obj.code ||
+        !obj.category ||
+        !obj.stock
       ) {
         return "Product has an empty variable";
       }
@@ -44,7 +44,8 @@ export default class ProductManager {
       const newProduct = { id: id, ...obj };
       this.products.push(newProduct);
       const productsString = JSON.stringify(this.products);
-      fs.writeFile(this.path, productsString);
+      await fs.promises.writeFile(this.path, productsString);
+      return newProduct
     }
   };
 
@@ -57,7 +58,7 @@ export default class ProductManager {
       if (product) {
         return product;
       } else {
-        return ("PRODUCT NOT FOUND")
+        console.log ("PRODUCT NOT FOUND")
       }
   };
 
@@ -70,9 +71,9 @@ export default class ProductManager {
       !product.code ||
       !product.stock
     ) {
-      return "You must to complete all the fields";
+      console.log( "You must to complete all the fields");
     } else {
-      this.products.forEach((ele) => {
+      this.products.forEach(async (ele) => {
         if (ele.id === id) {
           ele.title = product.title;
           ele.description = product.description;
@@ -80,8 +81,8 @@ export default class ProductManager {
           ele.thumbnail = product.thumbnail;
           ele.code = product.code;
           ele.stock = product.stock;
-
-          fs.writeFileSync(this.path, JSON.stringify(this.products));
+          console.log("Entro",ele);
+          await fs.promises.writeFileSync(this.path, JSON.stringify(this.products));
         }
       });
     }
