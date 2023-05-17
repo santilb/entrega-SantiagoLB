@@ -1,0 +1,25 @@
+<div>
+    <h1>Lista de Productos</h1>
+    <br>
+    {{#each limitProduct}}
+   <ul class="list-group">
+        <li class="list-group-item list-group-item-info">ID: {{id}}</li>
+        <li class="list-group-item">Product: {{title}}</li>
+        <li class="list-group-item">Price: {{price}}</li>
+        <li class="list-group-item">Stock: {{stock}}</li>
+    </ul>
+    <hr>
+    {{/each}}
+
+    {{#each products}}
+    <ul class="list-group">
+        <li class="list-group-item list-group-item-info">ID: {{id}}</li>
+        <li class="list-group-item">Product: {{title}}</li>
+        <li class="list-group-item">Price: {{price}}</li>
+        <li class="list-group-item">Stock: {{stock}}</li>
+    </ul>
+
+    <hr>
+    {{/each}}
+
+</div>

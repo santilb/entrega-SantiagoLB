@@ -23,24 +23,25 @@ export default class ProductManager {
 
     if (obj) {
       if (this.products.find((product) => product.code === obj.code)) {
-        return "The product already exists";
+        console.log("The product already exists");
+        return
       }
       if (
         !obj.title ||
         !obj.description ||
         !obj.price ||
         !obj.code ||
-        !obj.category ||
         !obj.stock
       ) {
-        return "Product has an empty variable";
+        console.log("Product has an empty variable");
+        return
       }
-      if (!product.thumbnail) {
+      /*if (!product.thumbnail) {
         product.thumbnail = [];
       }
       if (!product.status) {
         product.status = true;
-      }
+      }*/
       const newProduct = { id: id, ...obj };
       this.products.push(newProduct);
       const productsString = JSON.stringify(this.products);

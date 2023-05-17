@@ -1,17 +1,43 @@
 import Router from "express";
 import { productManager } from "../app.js";
+import { __dirname } from "../utils.js";
 
 const productsRouter = Router();
 
+productsRouter.set('views',__dirname+'\\views');
+
 productsRouter.get("/", async (req, res) => {
   try {
-    let products = productManager.getProducts();
+    let products = await productManager.getProducts();
     const limit = req.query.limit;
     if (limit) {
       const limitProduct = products.slice(0, limit);
+      console.log(limitProduct)
+      //return res.status(200).render("home", {limitProduct});
       return res.status(200).json(limitProduct);
     } else {
       return res.json(products);
+      //return res.status(200).render("home", {products});
+    }
+  } catch (err) {
+    res
+      .status(500)
+      .json({ status: "error", msg: "an error has occurred", data: {} });
+  }
+});
+
+productsRouter.get("/view", async (req, res) => {
+  try {
+    let products = await productManager.getProducts();
+    const limit = req.query.limit;
+    if (limit) {
+      const limitProduct = products.slice(0, limit);
+      console.log(limitProduct)
+      return res.status(200).render("home", {limitProduct});
+      //return res.status(200).json(limitProduct);
+    } else {
+      //return res.json(products);
+      return res.status(200).render("home", {products});
     }
   } catch (err) {
     res
