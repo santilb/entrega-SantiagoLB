@@ -1,11 +1,12 @@
 import express from "express";
-import { productManager } from "../app.js";
+import {MongoDBProducts} from "../dao/MongoDBProducts.js";
 
 export const realTimeProducts = express.Router();
+const db = new MongoDBProducts();
 
 realTimeProducts.get("/", async (req, res) => {
   try {
-    const products = await productManager.getProducts();
+    const products = await db.getAll();
     return res.status(200).render("realTimeProducts", { products });
 }
 catch (err) {

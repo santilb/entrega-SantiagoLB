@@ -1,4 +1,18 @@
 import multer from "multer";
+import { connect } from 'mongoose'
+
+export async function connectMongo() {
+  try {
+    await connect(
+      'mongodb+srv://santilb:KPVnm3izYlOwtJin@coderhouse.ai8ozim.mongodb.net/ecommerce?retryWrites=true&w=majority'
+    )
+    console.log('plug to mongo!')
+  } catch (e) {
+    console.log(e)
+    // eslint-disable-next-line no-throw-literal
+    throw 'cannot connect to the db'
+  }
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {

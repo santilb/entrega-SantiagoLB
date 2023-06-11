@@ -1,42 +1,93 @@
 import Router from "express";
-import { cartManager } from "../app.js";
+//import { cartManager } from "../app.js";
+import  {MongoDBCarts} from "../dao/MongoDBCarts.js";
+import  {MongoDBProducts} from "../dao/MongoDBProducts.js";
 
 const cartsRouter = Router();
+const db = new MongoDBCarts();
+const dbProducts = new MongoDBProducts();
 
-cartsRouter.post("/", (req, res) => {
+cartsRouter.post("/", async (req, res) => {
   try {
-    const cart = cartManager.addCart();
-    res.status(200).json({ message: "Cart Created!", cart });
+    const cartCreated = await db.create();
+    cartCreated
+      ? res.status(201).json({
+          status: "success",
+          payload: cartCreated,
+        })
+      : res.json({
+          status: "error",
+        });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(err.status || 500).json({
+      status: "error",
+      payload: err.message,
+    });
   }
 });
 
-cartsRouter.get("/:cid", (req, res) => {
-  const cartId = req.params.cid;
+cartsRouter.get("/", async (req, res) => {
+  /**Devuelve todos los carritos */
   try {
-    const cart = cartManager.getCartById(cartId);
-    res.status(200).json(cart);
-  } catch (error) {
-    res.status(400).json({ error: "Cart not found" });
+    const allCarts = await db.getAll();
+    allCarts
+      ? res.status(200).json({
+          status: "success",
+          payload: allCarts,
+        })
+      : res.status(200).json({
+          status: "success",
+          payload: [],
+        });
+  } catch (err) {
+    res.status(err.status || 500).json({
+      status: "error",
+      payload: err.message,
+    });
   }
 });
 
-cartsRouter.post("/:cid/products/:pid", async (req, res, next) => {
+cartsRouter.get("/:idCart/products", async (req, res) => {
+  /**Devuelve los productos de un carrito por id */
   try {
-      const cartId = req.params.cid
-      const productId = req.params.pid
-      const searchCart = cartManager.getCarts().find((ele) => ele.idCart == cartId)
-      if (!searchCart) {
-          res.status(200).json(`Cart id: ${cartId} Not Found`)
-      }
-      const product = cartManager.addProductToCart(cartId, productId)
-      res.status(200).json(product)
+    const idCart = req.params.idCart;
+    const cart = await db.getOne(idCart);
+    cart
+      ? res.status(200).json({
+          status: "success",
+          payload: cart.products,
+        })
+      : res.status(404).json({
+          status: "error",
+          message: "Sorry, no cart found by id: " + idCart,
+          payload: {},
+        });
   } catch (err) {
-    console.log(err)
-      res.status(500).json({ status: "error", msg: "Internal Error" })
+    res.status(err.status || 500).json({
+      status: "error",
+      payload: err.message,
+    });
   }
-})
+});
+
+cartsRouter.put("/:idCart/products/:idProduct", async (req, res) => {
+  try {
+    const cart = await db.getOne(req.params.idCart);
+    const product = await dbProducts.getOne(req.params.idProduct);
+
+    if (cart && product) {
+      const cartUpdated = await db.addProductos(cart, product);
+      const response = await db.getOne(cartUpdated._id);
+      res.status(201).json({
+        status: "success",
+        payload: response,
+      });
+    } else {
+      res.status(404).json({ message: "Missing data" });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message, line: err.line });
+  }
+});
 
 export default cartsRouter;

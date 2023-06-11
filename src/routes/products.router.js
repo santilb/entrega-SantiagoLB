@@ -1,14 +1,16 @@
 import Router from "express";
-import { productManager } from "../app.js";
+import {MongoDBProducts} from "../dao/MongoDBProducts.js";
 import { __dirname } from "../utils.js";
+import { validateNumber } from "../utils/helpers.js";
 
 const productsRouter = Router();
+const db = new MongoDBProducts();
 
 productsRouter.set('views',__dirname+'\\views');
 
 productsRouter.get("/", async (req, res) => {
   try {
-    let products = await productManager.getProducts();
+    let products = await db.getAll();
     const limit = req.query.limit;
     if (limit) {
       const limitProduct = products.slice(0, limit);
@@ -28,7 +30,7 @@ productsRouter.get("/", async (req, res) => {
 
 productsRouter.get("/view", async (req, res) => {
   try {
-    let products = await productManager.getProducts();
+    let products = await db.getAll();
     const limit = req.query.limit;
     if (limit) {
       const limitProduct = products.slice(0, limit);
@@ -49,7 +51,7 @@ productsRouter.get("/view", async (req, res) => {
 productsRouter.get("/:pid", (req, res) => {
   try {
     const id = parseInt(req.params.pid);
-    const product = productManager.getProductById(id);
+    const product = db.getOne(id);
     const result = product ? product : "Product not found";
     res.status(200).json(result);
   } catch (err) {
@@ -62,15 +64,13 @@ productsRouter.get("/:pid", (req, res) => {
 productsRouter.post("/", async (req, res) => {
   try {
     const newProduct = req.body;
-    let repeated = productManager
-      .getProducts()
-      .find((ele) => ele.code === newProduct.code);
+    let repeated = db.getAll().find((ele) => ele.code === newProduct.code);
     if (repeated) {
       return res
         .status(400)
         .json({ status: "error", msg: "Product already exists" });
     }
-    const added = await productManager.addProduct(newProduct);
+    const added = await db.create(newProduct);
     added
       ? res
           .status(200)
@@ -89,12 +89,12 @@ productsRouter.post("/", async (req, res) => {
 productsRouter.put("/:pid", (req, res) => {
   const id = parseInt(req.params.pid);
   const product = req.body;
-  const productId = productManager.getProductById(id);
+  const productId = db.getOne(id);
   console.log("prod", productId);
   if (!productId) {
     return res.status(404).json({ status: "error", msg: "Product not found " });
   }
-  const updated = productManager.updateProduct(id, product);
+  const updated = db.update(id, product);
   updated
     ? res.status(200).json({ status: "success", msg: "product updated" })
     : res
@@ -104,7 +104,7 @@ productsRouter.put("/:pid", (req, res) => {
 
 productsRouter.delete("/:pid", (req, res) => {
   const id = parseInt(req.params.pid);
-  const deleted = productManager.deleteProduct( id);
+  const deleted = db.delete(id);
 deleted?
   res
   .status(200)
