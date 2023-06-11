@@ -45,7 +45,7 @@ socket.on("refresh-product", async (products) => {
     htmlcontent += "<ul id='list-products' class='list-group'>";
     htmlcontent +=
       "<li class='list-group-item list-group-item-info'>ID: " +
-      element.id +
+      element._id +
       "</li>";
     htmlcontent +=
       "<li class='list-group-item'>Product: " + element.title + "</li>";
@@ -62,10 +62,11 @@ socket.on("refresh-product", async (products) => {
 socket.on("newProduct", async (products) => {
   let htmlcontent = "";
   products.forEach((element) => {
+    
     htmlcontent += "<ul id='list-products' class='list-group'>";
     htmlcontent +=
       "<li class='list-group-item list-group-item-info'>ID: " +
-      element.id +
+      element._id +
       "</li>";
     htmlcontent +=
       "<li class='list-group-item'>Product: " + element.title + "</li>";
