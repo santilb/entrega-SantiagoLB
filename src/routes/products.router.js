@@ -15,11 +15,9 @@ productsRouter.get("/", async (req, res) => {
     if (limit) {
       const limitProduct = products.slice(0, limit);
       console.log(limitProduct)
-      //return res.status(200).render("home", {limitProduct});
       return res.status(200).json(limitProduct);
     } else {
       return res.json(products);
-      //return res.status(200).render("home", {products});
     }
   } catch (err) {
     res
