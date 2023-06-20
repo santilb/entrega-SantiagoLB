@@ -1,81 +1,143 @@
-//FRONT
-const socket = io();
+let carritoId = localStorage.getItem("carrito-id");
+const API_URL = "http://localhost:8080/api";
+function putIntoCart(_id) {
+  carritoId = localStorage.getItem("carrito-id");
+  const url = API_URL + "/carts/" + carritoId + "/product/" + _id;
 
-const titleInput = document.getElementById("title");
-const descriptionInput = document.getElementById("description");
-const priceInput = document.getElementById("price");
-const thumbnailInput = document.getElementById("thumbnail");
-const codeInput = document.getElementById("code");
-const stockInput = document.getElementById("stock");
-const categoryInput = document.getElementById("category");
+  const data = {};
 
-const form = document.getElementById("form-product");
+  const options = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  };
 
-form.addEventListener("submit", (e) => {
-  e.preventDefault();
+  fetch(url, options)
+    .then((response) => response.json())
+    .then((res) => {
+      console.log(res);
+      alert("agregado!!!");
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      alert(JSON.stringify(error));
+    });
+}
 
-  if (titleInput.value === "" ||
-    descriptionInput.value === "" ||
-    codeInput.value === "" ||
-    stockInput.value == 0  ||
-    priceInput.value == 0
-  ) {
-    alert("You must to complete all the fields");
+if (!carritoId) {
+  alert("no id");
+  const url = API_URL + "/carts";
+
+  const data = {};
+
+  const options = {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  };
+
+  fetch(url, options)
+    .then((response) => response.json())
+    .then((data) => {
+      console.log("Response:", data);
+      const carritoId = localStorage.setItem("carrito-id", data._id);
+    })
+    .catch((error) => {
+      console.error("Error:", error);
+      alert(JSON.stringify(error));
+    });
+}
+
+const addProductForm = document.getElementById("addProductForm");
+const addProductFormReal = document.getElementById("addProductFormReal");
+const productsList = document.getElementById("productsList");
+
+async function deleteProduct(id) {
+  const response = await fetch(`/api/products/${id}`, {
+    method: "delete",
+  });
+  if (response.ok) {
+    const li = document.getElementById(id);
+    li.remove();
   } else {
-    
-    const product = {
-      title: titleInput.value,
-      description: descriptionInput.value,
-      price: parseInt(priceInput.value),
-      thumbnails: '['+thumbnailInput.value+']',
-      code: codeInput.value,
-      stock: parseInt(stockInput.value),
-      category: categoryInput.value,
-    };
-
-    socket.emit("newProduct", product);
-    alert("Product Added");
+    console.error();
+    alert("Product couldn't be deleted");
   }
-});
+}
 
+function deleteProductSocket(id) {
+  socket.emit("deleteProduct", id);
+}
 
-socket.on("refresh-product", async (products) => {
-  let htmlcontent = "";
-  products.forEach((element) => {
-    htmlcontent += "<ul id='list-products' class='list-group'>";
-    htmlcontent +=
-      "<li class='list-group-item list-group-item-info'>ID: " +
-      element._id +
-      "</li>";
-    htmlcontent +=
-      "<li class='list-group-item'>Product: " + element.title + "</li>";
-    htmlcontent +=
-      "<li class='list-group-item'>Price: " + element.price + "</li>";
-    htmlcontent +=
-      "<li class='list-group-item'>Stock: " + element.stock + " </li>";
-    htmlcontent += "</ul><br>";
+try {
+  addProductForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = new FormData(addProductForm);
+    const entries = Array.from(formData.entries());
+    const formDataObject = entries.reduce((obj, [key, value]) => {
+      obj[key] = value;
+      return obj;
+    }, {});
+    const response = await fetch("/api/products", {
+      method: "post",
+      body: JSON.stringify(formDataObject),
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+    const product = await response.json();
+    if (response.ok) {
+      const li = `
+            <li id="${product.id}">
+                <div>
+                    <p>${product.title} - ${product.description} - ${product.price} - ${product.thumbnail} - ${product.code} - ${product.stock} - ${product.category}</p>
+                    <button onclick="deleteProduct('${product.id}')">Delete</button>
+                </div>
+            </li>
+            `;
+      productsList.innerHTML += li;
+      addProductForm.reset();
+    } else {
+      alert("Error, product not loaded");
+    }
   });
-  const productlist = document.getElementById("list-products");
-  productlist.innerHTML = htmlcontent;
-});
+} catch (error) {}
 
-socket.on("newProduct", async (products) => {
-  let htmlcontent = "";
-  products.forEach((element) => {
-    
-    htmlcontent += "<ul id='list-products' class='list-group'>";
-    htmlcontent +=
-      "<li class='list-group-item list-group-item-info'>ID: " +
-      element._id +
-      "</li>";
-    htmlcontent +=
-      "<li class='list-group-item'>Product: " + element.title + "</li>";
-    htmlcontent +=
-      "<li class='list-group-item'>Price: " + element.price + "</li>";
-    htmlcontent +=
-      "<li class='list-group-item'>Stock: " + element.stock + " </li>";
-    htmlcontent += "</ul><br>";
+try {
+  socket.on("connect", () => {
+    console.log("Successful connection");
   });
-  const productlist = document.getElementById("list-products");
-  productlist.innerHTML = htmlcontent;
-});
+  socket.on("addedProduct", (product) => {
+    const li = `
+        <li id="${product.id}">
+            <div>
+                <p>${product.title} - ${product.description} - ${product.price} - ${product.thumbnail} - ${product.code} - ${product.stock} - ${product.category}</p>
+                <button onclick="deleteProductSocket('${product.id}')">Delete</button>
+            </div>
+        </li>
+        `;
+    productsList.innerHTML += li;
+  });
+
+  socket.on("deletedProduct", (id) => {
+    const li = document.getElementById(id);
+    li.remove();
+  });
+
+  addProductFormReal.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(addProductFormReal);
+    const entries = Array.from(formData.entries());
+    const formDataObject = entries.reduce((obj, [key, value]) => {
+      obj[key] = value;
+      return obj;
+    }, {});
+    socket.emit("addProduct", formDataObject);
+  });
+  addProductFormReal.reset();
+} catch (error) {}

@@ -4,7 +4,7 @@ import { connect } from 'mongoose'
 export async function connectMongo() {
   try {
     await connect(
-      'mongodb+srv://santilb:KPVnm3izYlOwtJin@coderhouse.ai8ozim.mongodb.net/ecommerce?retryWrites=true&w=majority'
+      'mongodb+srv://santilb:X2G1Sk2EzGWdgFwu@coderhouse.ai8ozim.mongodb.net/ecommerce?retryWrites=true&w=majority'
     )
     console.log('plug to mongo!')
   } catch (e) {
@@ -25,8 +25,36 @@ const storage = multer.diskStorage({
 
 export const uploader = multer({ storage });
 
-// https://flaviocopes.com/fix-dirname-not-defined-es-module-scope/
 import path from "path";
 import { fileURLToPath } from "url";
 export const __filename = fileURLToPath(import.meta.url);
 export const __dirname = path.dirname(__filename);
+
+//--------------------- SOCKET ---------------------
+import {Server} from 'socket.io';
+import {ChatModel} from "./dao/models/chats.model.js";
+import ProductService from "./services/products.service.js";
+
+export function connectSocket(httpServer){
+    const socketServer = new Server(httpServer);
+
+    socketServer.on('connection', (socket) => {
+        console.log('New user connected');
+
+        socket.on('addProduct', async (entries) => {
+        const product = await ProductService.createOne(entries);
+        socketServer.emit('addedProduct', product)
+        })
+
+        socket.on('deleteProduct', async id => {
+        await ProductService.deleteOne(id);
+        socketServer.emit('deletedProduct', id)
+        })
+
+        socket.on('msg_front_to_back', async (msg) => {
+            const msgCreated = await ChatModel.create(msg);
+            const messages = await ChatModel.find({});
+            socketServer.emit('msg_back_to_front', messages);
+        });
+    });
+}

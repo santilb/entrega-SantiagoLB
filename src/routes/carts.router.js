@@ -1,92 +1,91 @@
 import Router from "express";
-//import { cartManager } from "../app.js";
-import  {MongoDBCarts} from "../dao/MongoDBCarts.js";
-import  {MongoDBProducts} from "../dao/MongoDBProducts.js";
+import CartService from "../services/carts.service.js";
 
 const cartsRouter = Router();
-const db = new MongoDBCarts();
-const dbProducts = new MongoDBProducts();
+const cartService = new CartService();
 
 cartsRouter.post("/", async (req, res) => {
   try {
-    const cartCreated = await db.create();
-    cartCreated
-      ? res.status(201).json({
-          status: "success",
-          payload: cartCreated,
-        })
-      : res.json({
-          status: "error",
-        });
-  } catch (err) {
-    res.status(err.status || 500).json({
-      status: "error",
-      payload: err.message,
-    });
+    const newCart = await cartService.createOne();
+    res.status(201).json(newCart);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
-cartsRouter.get("/", async (req, res) => {
-  /**Devuelve todos los carritos */
+cartsRouter.get("/:cid", async (req, res) => {
   try {
-    const allCarts = await db.getAll();
-    allCarts
-      ? res.status(200).json({
-          status: "success",
-          payload: allCarts,
-        })
-      : res.status(200).json({
-          status: "success",
-          payload: [],
-        });
-  } catch (err) {
-    res.status(err.status || 500).json({
-      status: "error",
-      payload: err.message,
-    });
+    const cartId = req.params.cid;
+    const cart = await cartService.get(cartId); //.populate('products');
+    res.status(200).json(cart);
+  } catch (error) {
+    res.status(404).json({ message: error.message });
   }
 });
 
-cartsRouter.get("/:idCart/products", async (req, res) => {
-  /**Devuelve los productos de un carrito por id */
+cartsRouter.post("/:cid/product/:pid", async (req, res) => {
   try {
-    const idCart = req.params.idCart;
-    const cart = await db.getOne(idCart);
-    cart
-      ? res.status(200).json({
-          status: "success",
-          payload: cart.products,
-        })
-      : res.status(404).json({
-          status: "error",
-          message: "Sorry, no cart found by id: " + idCart,
-          payload: {},
-        });
-  } catch (err) {
-    res.status(err.status || 500).json({
-      status: "error",
-      payload: err.message,
-    });
+    const { cid, pid } = req.params;
+    console.log(cid, pid);
+    const cart = await cartService.addProductToCart(cid, pid);
+    res.status(200).json(cart);
+  } catch (error) {
+    res.status(404).json({ error: error.message });
   }
 });
 
-cartsRouter.put("/:idCart/products/:idProduct", async (req, res) => {
+cartsRouter.delete("/:cid/products/:pid", async (req, res) => {
   try {
-    const cart = await db.getOne(req.params.idCart);
-    const product = await dbProducts.getOne(req.params.idProduct);
+    const { cid, pid } = req.params;
+    const cart = await cartService.removeProduct(cid, pid);
+    res
+      .status(200)
+      .json({ status: "success", message: "Product removed from cart", cart });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
 
-    if (cart && product) {
-      const cartUpdated = await db.addProductos(cart, product);
-      const response = await db.getOne(cartUpdated._id);
-      res.status(201).json({
-        status: "success",
-        payload: response,
-      });
-    } else {
-      res.status(404).json({ message: "Missing data" });
-    }
-  } catch (err) {
-    res.status(500).json({ message: err.message, line: err.line });
+cartsRouter.put("/:cid", async (req, res) => {
+  try {
+    const { cid } = req.params;
+    const { products } = req.body;
+    const cart = await cartService.updateCart(cid, products);
+    res
+      .status(200)
+      .json({ status: "success", message: "Cart updated successfully", cart });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
+
+cartsRouter.put("/:cid/products/:pid", async (req, res) => {
+  try {
+    const { cid, pid } = req.params;
+    const { quantity } = req.body;
+    const cart = await cartService.updateProductQuantity(cid, pid, quantity);
+    res
+      .status(200)
+      .json({ status: "success", message: "Product quantity updated", cart });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
+  }
+});
+
+cartsRouter.delete("/:cid", async (req, res) => {
+  try {
+    const { cid } = req.params;
+    await cartService.clearCart(cid);
+    res
+      .status(200)
+      .json({ status: "success", message: "Cart cleared successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "error", message: "Internal server error" });
   }
 });
 

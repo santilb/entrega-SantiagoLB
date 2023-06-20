@@ -1,115 +1,109 @@
-import Router from "express";
-import {MongoDBProducts} from "../dao/MongoDBProducts.js";
-import { __dirname } from "../utils.js";
-import { validateNumber } from "../utils/helpers.js";
+import express from 'express'
+import ProductService from "../services/products.service.js";
 
-const productsRouter = Router();
-const db = new MongoDBProducts();
+const productService = new ProductService();
 
-productsRouter.set('views',__dirname+'\\views');
-
-productsRouter.get("/", async (req, res) => {
+const productsRouter = express.Router();
+productsRouter.get('/', async (req, res) => {
   try {
-    let products = await db.getAll();
-    const limit = req.query.limit;
-    if (limit) {
-      const limitProduct = products.slice(0, limit);
-      console.log(limitProduct)
-      return res.status(200).json(limitProduct);
-    } else {
-      return res.json(products);
-    }
-  } catch (err) {
-    res
-      .status(500)
-      .json({ status: "error", msg: "an error has occurred", data: {} });
+      const queryParams = req.query;
+      const response = await productService.get(queryParams);
+      return res.status(200).json(response);
+  } catch (e) {
+      console.log(e);
+      return res.status(500).json({
+          status: "error",
+          msg: "something went wrong :(",
+          data: {},
+      });
   }
 });
 
-productsRouter.get("/view", async (req, res) => {
+productsRouter.get('/:pid', async (req, res) => {
   try {
-    let products = await db.getAll();
-    const limit = req.query.limit;
-    if (limit) {
-      const limitProduct = products.slice(0, limit);
-      console.log(limitProduct)
-      return res.status(200).render("home", {limitProduct});
-      //return res.status(200).json(limitProduct);
-    } else {
-      //return res.json(products);
-      return res.status(200).render("home", {products});
-    }
-  } catch (err) {
-    res
-      .status(500)
-      .json({ status: "error", msg: "an error has occurred", data: {} });
+      const { pid } = req.params;
+      const product = await productService.get(pid);
+      return res.status(200).json({
+          status: "success",
+          msg: "producto",
+          data: product,
+      });
+  } catch (e) {
+      console.log(e);
+      return res.status(500).json({
+          status: "error",
+          msg: "something went wrong :(",
+          data: {},
+      });
   }
 });
 
-productsRouter.get("/:pid", (req, res) => {
-  try {
-    const id = parseInt(req.params.pid);
-    const product = db.getOne(id);
-    const result = product ? product : "Product not found";
-    res.status(200).json(result);
-  } catch (err) {
-    res
-      .status(500)
-      .json({ status: "error", msg: "an error has occurred", data: {} });
-  }
-});
 
 productsRouter.post("/", async (req, res) => {
   try {
-    const newProduct = req.body;
-    let repeated = db.getAll().find((ele) => ele.code === newProduct.code);
-    if (repeated) {
-      return res
-        .status(400)
-        .json({ status: "error", msg: "Product already exists" });
-    }
-    const added = await db.create(newProduct);
-    added
-      ? res
-          .status(200)
-          .json({ status: "success", msg: "product added", data: added })
-      : res
-          .status(404)
-          .json({ status: "error", msg: "Product has an empty variable" });
-  } catch (err) {
-    console.log(err);
-    res
-      .status(500)
-      .json({ status: "error", msg: "an error has occurred", data: {} });
+      const {title, description, price, thumbnail, code, stock, category} = req.body;
+      const productCreated = await productService.createOne(title, description, price, thumbnail, code, stock, category);
+      return res.status(201).json({
+          status: "success",
+          msg: "product created",
+          data: productCreated,
+      });
+  } catch (e) {
+      console.log(e);
+      return res.status(500).json({
+          status: "error",
+          msg: "something went wrong :(",
+          data: {},
+      });
   }
 });
 
-productsRouter.put("/:pid", (req, res) => {
-  const id = parseInt(req.params.pid);
-  const product = req.body;
-  const productId = db.getOne(id);
-  console.log("prod", productId);
-  if (!productId) {
-    return res.status(404).json({ status: "error", msg: "Product not found " });
+productsRouter.put("/:id", async (req, res) => {
+  try {
+      const { id } = req.params;
+      const { title, description, price, thumbnail, code, stock, category } = req.body;
+      if (!title || !description || !price || !thumbnail || !code || !stock || !category) {
+          console.log("validation error: please complete all fields.");
+          return res.status(400).json({
+              status: "error",
+              msg: "validation error: please complete all fields.",
+              data: {},
+          });
+      }
+
+  const productUpdated = await productService.updateOne(id, title, description, price, thumbnail, code, stock, category);
+  return res.status(200).json({
+      status: "success",
+      msg: "product updated",
+      data: productUpdated,
+  });
+  } catch (e) {
+      console.log(e);
+      return res.status(500).json({
+          status: "error",
+          msg: "something went wrong :(",
+          data: {},
+      });
   }
-  const updated = db.update(id, product);
-  updated
-    ? res.status(200).json({ status: "success", msg: "product updated" })
-    : res
-        .status(404)
-        .json({ status: "error", msg: "Product has an empty variable" });
 });
 
-productsRouter.delete("/:pid", (req, res) => {
-  const id = parseInt(req.params.pid);
-  const deleted = db.delete(id);
-deleted?
-  res
-  .status(200)
-  .json({ status: "success", msg: "product deleted" }) :
-  res
-  .status(404)
-  .json({ status: "error", msg: "Product not found" });
+productsRouter.delete("/:id", async (req, res) => {
+  try {
+      const { id } = req.params;
+      const productDeleted = await productService.deleteOne(id);
+      return res.status(200).json({
+          status: "success",
+          msg: "product deleted",
+          data: {},
+      });
+  } catch (e) {
+      console.log(e);
+      return res.status(500).json({
+          status: "error",
+          msg: "something went wrong :(",
+          data: {},
+      });
+  }
 });
 
 export default productsRouter;
