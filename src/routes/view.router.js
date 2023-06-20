@@ -93,7 +93,7 @@ viewsRouter.get("/products/:pid", async (req, res, next) => {
       stock: product.stock,
       category: product.category,
     };
-    res.render("product", { product: productSimplified });
+    res.render("/product", { product: productSimplified });
   } catch (error) {
     next(error);
   }
