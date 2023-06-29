@@ -1,68 +1,100 @@
+import flash from "connect-flash";
+import MongoStore from "connect-mongo";
+import cookieParser from "cookie-parser";
 import express from "express";
-import handlebars from 'express-handlebars';
-import session from 'express-session';
-import path from 'path';
-import authRouter  from './routes/auth.router.js';
-import cartsRouter from "./routes/carts.router.js";
-import chatRouter from "./routes/chat.router.js";
-import productsRouter from "./routes/products.router.js";
-import viewsRouter from "./routes/view.router.js";
-import { __dirname, connectMongo, connectSocket, isAdmin, isLogedIn } from './utils.js';
-import MongoStore from 'connect-mongo';
+import exphbs from "express-handlebars";
+import session from "express-session";
+import http from "http";
+import morgan from "morgan";
+import { dirname } from "path";
+import { Server as SocketServer } from "socket.io";
+import { fileURLToPath } from "url";
+import { passport } from "./auth/passport-local.js";
+import { connectMongoDB } from "./config/configMongoDB.js";
+import authRoutes from "./routes/authRoutes.js";
+import cartRoutes from "./routes/cartRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
+import homeRoutes from "./routes/homeRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
+import websockets from "./websockets/websockets.js";
 
-
-await connectMongo();
+/** ★━━━━━━━━━━━★ variables ★━━━━━━━━━━━★ */
 
 const app = express();
-const PORT = 8080;
+const PORT = 8080 || process.env.PORT;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-const httpServer = app.listen(PORT, () => {
-  console.log("Server is running on http://localhost:" + PORT);
-});
 
-//CONFIG EXPRESS
-app.use(express.static(__dirname + "/public"));
+const httpServer = http.createServer(app);
+const io = new SocketServer(httpServer);
+
+websockets(io);
+
+/*middlewares*/
+app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// Handlebars
-app.engine("handlebars", handlebars.engine());
-//app.set("views", __dirname + "//views");
-//app.set('views', path.join(__dirname, 'views'));
-app.set('views', 'views');
-app.set("view engine", "handlebars");
+app.use(express.static(__dirname + "/public"));
 
+app.use(cookieParser("mySecret"));
+
+const MONGO_USER = process.env.MONGO_USER;
+const MONGO_PASS = process.env.MONGO_PASS;
+const DB_NAME = process.env.DB_NAME;
 
 app.use(
   session({
-    store: MongoStore.create({ mongoUrl: 'mongodb+srv://santilb:X2G1Sk2EzGWdgFwu@coderhouse.ai8ozim.mongodb.net/ecommerce?retryWrites=true&w=majority', ttl: 7200 }),
-    secret: 'a-secret',
+    secret: "secret",
     resave: true,
     saveUninitialized: true,
+    store: MongoStore.create({
+      mongoUrl: 'mongodb+srv://santilb:X2G1Sk2EzGWdgFwu@coderhouse.ai8ozim.mongodb.net/ecommerce?retryWrites=true&w=majority',
+      ttl: 60 * 10, // 10 minutes
+    }),
   })
 );
+app.use(passport.initialize()); 
+app.use(passport.session()); 
 
-app.get('/profile', isLogedIn, (req, res) => {
-  const user = { email: req.session.email, isAdmin: req.session.isAdmin };
-  return res.status(403).render('profile', { user: user });
+app.use(flash());
 
-  //return res.send('session: ' + JSON.stringify(req.session));
+const handlebars = exphbs.create({
+  runtimeOptions: {
+    allowProtoPropertiesByDefault: true,
+  },
 });
 
-app.get('/secret', isAdmin, (req, res) => {
-  return res.send('lugar re secreto');
+app.engine("handlebars", handlebars.engine);
+app.set("views", __dirname + "/views");
+app.set("view engine", "handlebars");
+
+/*Routes*/
+app.use("/home", homeRoutes);
+app.use("/products", productRoutes);
+app.use("/carts", cartRoutes);
+app.use("/chat", chatRoutes);
+app.use("/auth", authRoutes);
+app.use("/error", (req, res) => {
+  const { errorMessage } = req.flash();
+  res.render("error", { errorMessage });
 });
-app.use("/", viewsRouter);
-// ENDPOINTS API
-app.use("/api/products", productsRouter);
-app.use("/api/carts", cartsRouter);
 
-app.use("/chat", chatRouter);
-app.use('/auth', authRouter)
-
-app.get("*", (req, res, next) => {
-  res.status(404).json({ status: 404, message: "Page Not found" });
+// redirect to /home
+app.get("/", (req, res) => {
+  res.redirect("/home");
+});
+// not found
+app.use("*", (req, res, next) => {
+  res.render("notfound");
 });
 
+connectMongoDB();
 
-
-connectSocket(httpServer);
+const server = httpServer.listen(PORT, () =>
+  console.log(
+    `Server started on port ${PORT}. 
+      at ${new Date().toLocaleString()}`
+  )
+);
+server.on("error", (err) => console.log(err));

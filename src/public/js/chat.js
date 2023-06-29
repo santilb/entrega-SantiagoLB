@@ -1,45 +1,47 @@
 const socket = io();
-let userEmail = '';
 
-async function askEmail() {
-    const {value: name} = await Swal.fire({
-        title: 'Enter your mail',
-        input: 'text',
-        inputLabel: 'Your mail',
-        inputValue: '',
-        showCancelButton: false,
-        inputValidator: (value) => {
-            if (!value) {
-                return 'You need to write your mail!';
-            }
-        },
-    });
-    userEmail = name;
-}
+const messageContainer = document.getElementById("messages");
+const btn = document.getElementById("send");
+const usernameInput = document.getElementById("username");
+const messageInput = document.getElementById("message");
 
-askEmail();
+/** Cuando envía mensaje lo envío al servidor */
+btn.addEventListener("click", () => {
+  const message = messageInput.value;
+  const username = usernameInput.value;
+  messageInput.value = "";
+  usernameInput.value = "";
 
-const chatBox = document.getElementById('chat-box');
-
-chatBox.addEventListener('keyup', ({key}) => {
-    if (key == 'Enter') {
-        socket.emit('msg_front_to_back', {
-        user: userEmail,
-        message: chatBox.value,
-        });
-        chatBox.value = '';
-    }
+  //enviar mensaje al servidor
+  socket.emit("new-message", {
+    message: message,
+    username: username,
+  });
 });
 
-socket.on('msg_back_to_front', (messages) => {
-    console.log(messages);
-    let msgsFormateados = '';
-    messages.forEach((msg) => {
-        msgsFormateados += "<div style='border: 1px solid red;'>";
-        msgsFormateados += '<p>' + msg.user + '</p>';
-        msgsFormateados += '<p>' + msg.message + '</p>';
-        msgsFormateados += '</div>';
-    });
-    const divMsgs = document.getElementById('div-msgs');
-    divMsgs.innerHTML = msgsFormateados;
+/** El cliente recibe los mensajes desde el servidor*/
+socket.on("refresh-messages", (messages) => {
+  messageContainer.innerHTML = messages
+    .map((message) => {
+      return `<div
+       class="notification is-primary is-light"
+       style=" text-align: justify; margin-rigth:35px;     padding: 15px;
+       border-radius: 20px;">
+           <div>
+           <p>${message.message}</p>
+           </div>
+           <div
+           style="text-align: end; font-style: italic; font-weight: 400"
+           class="has-text-dark"
+           >
+           ${message.username}
+           </div>
+       </div>`;
+    })
+    .join("");
 });
+
+getNow = () => {
+  const now = new Date();
+  return `${now.getHours()}:${now.getMinutes()}`;
+};
