@@ -5,8 +5,10 @@ import { Strategy as LocalStrategy } from "passport-local";
 // passport-github2
 import { Strategy as GitHubStrategy } from "passport-github2";
 import MongoDBUsers from "../dao/MongoDBUsers.js";
+import { MongoDBCarts } from "../dao/MongoDBCarts.js";
 import { encryptPassword, comparePassword } from "../config/bcrypt.js";
 const db = new MongoDBUsers();
+const dbCarts = new MongoDBCarts();
 
 const localStrategy = LocalStrategy;
 const githubStrategy = GitHubStrategy;
@@ -15,6 +17,13 @@ const githubStrategy = GitHubStrategy;
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 
+/** Nota:
+ *  Passport guarda los datos del usuario autenticado
+ *  en la propiedad user del objeto req durante la autenticación
+ *  y crea la sesión (ver en app.js "app.use(passport.session()); // Enlaza passport con la sesion").
+ *  Luego, en cada petición, se puede acceder a los datos del usuario
+ *  autenticado con req.user.
+ */
 passport.use(
   "register",
   new localStrategy(
@@ -22,13 +31,13 @@ passport.use(
       /**Por default espera un username y un password.
        * Pero se pueden cambiar los nombres de los campos con usernameField y passwordField
        */
-      usernameField: "username",
+      usernameField: "email",
       passwordField: "password",
       passReqToCallback: true, //Para que el callback reciba el req completo,
     },
-    async (req, username, password, done) => {
+    async (req, email, password, done) => {
       // done es un callback que se ejecuta cuando termina la funcion
-      const usuarioSaved = await db.getUserByUsername({ username });
+      const usuarioSaved = await db.getUserByEmail({ email });
       if (usuarioSaved) {
         req.flash(
           "errorMessage",
@@ -37,9 +46,16 @@ passport.use(
         return done(null, false);
       } else {
         const hashPass = await encryptPassword(password);
+        /** create new Cart */
+        const newCart = await dbCarts.create();
         const newUser = {
-          username: username,
+          first_name: req.body.first_name,
+          last_name: req.body.last_name,
+          email: req.body.email,
+          age: req.body.age,
+          cart: newCart._id,
           password: hashPass,
+          role: req.body.role || "user",
         };
         const response = await db.create(newUser);
         console.log("Nuevo usuario registrado: ", response);
@@ -53,15 +69,15 @@ passport.use(
   "login",
   new localStrategy(
     {
-      usernameField: "username",
+      usernameField: "email",
       passwordField: "password",
       passReqToCallback: true, //Para que el callback reciba el req completo
     },
-    async (req, username, password, done) => {
+    async (req, email, password, done) => {
       // aunque no se use el req, hay que ponerlo para que funcione
       // done es un callback que se ejecuta cuando termina la funcion
 
-      const usuarioSaved = await db.getUserByUsername({ username });
+      const usuarioSaved = await db.getUserByEmail({ email });
       if (!usuarioSaved) {
         req.flash(
           "errorMessage",
@@ -80,8 +96,6 @@ passport.use(
         );
         return done(null, false);
       }
-      // Guardamos el usuario en la session
-      req.session.username = usuarioSaved.username;
 
       return done(null, usuarioSaved);
     }
