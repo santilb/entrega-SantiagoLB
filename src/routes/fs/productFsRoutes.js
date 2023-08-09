@@ -1,11 +1,14 @@
 import { Router } from "express";
-import { MongoDBProducts } from "../dao/MongoDBProducts.js";
-import { validateNumber } from "../utils/helpers.js";
+const router = Router();
+import ProductManager from "../../daos/fs/productManager.js";
+const path = "src/db/products.json";
+const myProductManager = new ProductManager(path);
+import { validateNumber } from "../../utils/helpers.js";
 import {
   validateRequest,
   validateNumberParams,
   validateCodeNotRepeated,
-} from "../middleware/validators.js";
+} from "../../middleware/validators.js";
 import multer from "multer";
 /**Multer config */
 // 'photo' es el nombre del campo en el formulario.
@@ -17,26 +20,25 @@ const storage = multer.diskStorage({
     cb(null, file.originalname);
   },
 });
-const router = Router();
 router.use(multer({ storage }).single("thumbnail"));
-const db = new MongoDBProducts();
 
 /**Rutas */
+
 router.get("/", async (req, res) => {
   try {
-    /**Deberá poder recibir por query params
-     * un limit (opcional), una page (opcional),
-     *  un sort (opcional)
-     * y un query (opcional)
-     */
-    const { limit, page, sort, query } = req.query;
-
-    const products = await db.getAll(limit, page, sort, query);
+    const products = await myProductManager.getProducts();
+    const limit = req.query.limit;
+    const isValidLimit = validateNumber(limit);
     products
-      ? res.status(200).json({
-          status: "success",
-          payload: products,
-        })
+      ? isValidLimit
+        ? res.status(200).json({
+            status: "success",
+            payload: products.slice(0, limit),
+          })
+        : res.status(200).json({
+            status: "success",
+            payload: products,
+          })
       : res.status(200).json({ status: "success", payload: [] });
   } catch (err) {
     res.status(err.status || 500).json({
@@ -46,10 +48,10 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", validateNumberParams, async (req, res) => {
   try {
     const id = req.params.id;
-    const product = await db.getOne(id);
+    const product = await myProductManager.getProductById(id);
     product
       ? res.status(200).json({
           status: "success",
@@ -68,29 +70,17 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.post("/", validateRequest, async (req, res) => {
+router.post("/", validateRequest, validateCodeNotRepeated, async (req, res) => {
   try {
     const newProduct = req.body;
-    // validate code not repeated
-    const response = await db.getAll();
-    const allProducts = response.docs;
-    const product = allProducts.find(
-      (product) => product.code == newProduct.code
-    );
-    if (product) {
-      res.status(400).json({
-        status: "error",
-        payload:
-          "Invalid request body. Code already exists: " + newProduct.code,
-      });
-      return;
-    }
-    const productCreated = await db.create(newProduct);
+    const photo = req.file;
+    // console.log(newProduct);
+    // console.log(photo);
+    //  antes de guardar el objeto le añado la propiedad para que se pueda acceder a la foto.
+    newProduct.thumbnail = "/uploads/" + photo.filename;
+    const productCreated = await myProductManager.addProduct(newProduct);
 
-    res.status(201).json({
-      status: "success",
-      payload: productCreated,
-    });
+    res.redirect("/");
   } catch (err) {
     res.status(err.status || 500).json({
       status: "error",
@@ -99,11 +89,11 @@ router.post("/", validateRequest, async (req, res) => {
   }
 });
 
-router.put("/:id", validateRequest, async (req, res) => {
+router.put("/:id", validateRequest, validateNumberParams, async (req, res) => {
   try {
     const id = req.params.id;
     const newProduct = req.body;
-    const productUpdated = await db.update(id, newProduct);
+    const productUpdated = await myProductManager.updateProduct(id, newProduct);
     res.status(200).json({
       status: "success",
       payload: productUpdated,
@@ -116,10 +106,20 @@ router.put("/:id", validateRequest, async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", validateNumberParams, async (req, res) => {
   try {
+    console.log("delete");
     const id = req.params.id;
-    const productDeleted = await db.delete(id);
+    const product = await myProductManager.getProductById(id);
+    if (!product) {
+      res.status(404).json({
+        status: "error",
+        message: "Sorry, no product found by id: " + id,
+        payload: {},
+      });
+      return;
+    }
+    const productDeleted = await myProductManager.deleteProduct(id);
     res.status(200).json({
       status: "success",
       payload: productDeleted,
