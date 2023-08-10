@@ -12,6 +12,11 @@ const config = {
   },
 };
 
+console.log(process.env.MONGO_USER)
+console.log(process.env.MONGO_PASS)
+console.log(process.env.DB_NAME)
+console.log(config.mongoDB.URL)
+
 export const connectMongoDB = async () => {
   try {
     await mongoose.connect(config.mongoDB.URL, config.mongoDB.options);
